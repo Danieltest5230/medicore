@@ -1,0 +1,22 @@
+# Core Django & REST Framework
+Django>=5.1.0,<6.0
+djangorestframework>=3.15.0
+django-cors-headers>=4.4.0
+djangorestframework-simplejwt>=5.3.1
+
+# Database & Environment
+psycopg2-binary>=2.9.9
+dj-database-url>=2.2.0
+python-dotenv>=1.0.1
+
+# Security & Cryptography
+cryptography>=43.0.0
+django-csp>=3.8
+
+# Documentation & API Schema
+drf-spectacular>=0.27.2
+
+# Testing & Utilities
+pytest>=8.3.0
+pytest-django>=4.9.0
+pillow>=10.4.0
