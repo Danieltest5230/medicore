@@ -89,10 +89,12 @@ export interface Anthropometry {
 export interface PhysicalExamination {
   id?: string;
   general_appearance?: string;
+  skin_and_mucosa?: string;
   head_and_neck?: string;
   respiratory_system?: string;
   cardiovascular_system?: string;
   abdomen?: string;
+  genitourinary_system?: string;
   neurological_system?: string;
   extremities_and_skin?: string;
 }
@@ -133,6 +135,11 @@ export interface ClinicalEncounter {
   encounter_date: string;
   reason_for_consultation: string;
   current_illness: string;
+  disease_history?: string;
+  pathological_history?: string;
+  medication_history?: string;
+  surgical_history?: string;
+  complementary_studies?: string;
   status: 'DRAFT' | 'SIGNED' | 'AMENDED';
   signed_at?: string;
   signature_hash?: string;

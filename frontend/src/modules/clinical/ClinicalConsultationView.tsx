@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   Activity, ShieldCheck, Heart, AlertTriangle, FileCheck, Lock,
   Plus, History, TrendingUp, Save, CheckCircle2, ChevronRight,
-  Stethoscope, Clock, ShieldAlert, Pill, FileText
+  Stethoscope, Clock, ShieldAlert, Pill, FileText, Download, Printer, Sparkles
 } from 'lucide-react';
 import {
   Patient, ClinicalEncounter, VitalSigns, Anthropometry,
@@ -33,48 +33,55 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
   const [medications, setMedications] = useState<PatientMedication[]>([]);
   const [evolutionHistory, setEvolutionHistory] = useState<any[]>([]);
 
-  // Form State
+  // 1. Anamnesis y Antecedentes (Muestra PDF)
   const [reason, setReason] = useState('');
   const [illness, setIllness] = useState('');
+  const [diseaseHistory, setDiseaseHistory] = useState('');
+  const [pathologicalHistory, setPathologicalHistory] = useState('');
+  const [medicationHistory, setMedicationHistory] = useState('');
+  const [surgicalHistory, setSurgicalHistory] = useState('');
 
-  // Vital Signs
+  // 2. Examen Físico Segmentado (Muestra PDF)
+  const [exam, setExam] = useState<PhysicalExamination>({
+    skin_and_mucosa: 'humedad conservada, elasticidad normal, no presenta edemas, ni circulación colateral',
+    cardiovascular_system: 'R1 R2 normofonéticos. Silencios impresionan libres. Pulsos periféricos permeables simétricos y regulares.',
+    respiratory_system: 'Reba sin ruidos patológicos agregados.',
+    abdomen: 'Abdomen blando, depresible, indoloro, flatos positivos, alimentación por vía oral, catarsis positiva',
+    genitourinary_system: 'Puño percusión lumbar bilateral negativa. Puntos Ureterales (-). Diuresis +.',
+    neurological_system: 'Glasgow 15/15. Signos meníngeos ausentes. Reflejos Osteotendinosos conservados.',
+    general_appearance: 'Paciente en regular a buen estado general, vigil, orientado témporo-espacialmente.',
+  });
+
+  // 3. Signos Vitales
   const [vitals, setVitals] = useState<VitalSigns>({
     systolic_bp: 120,
     diastolic_bp: 80,
     heart_rate: 72,
     respiratory_rate: 16,
     temperature_c: 36.5,
-    oxygen_saturation: 98,
+    oxygen_saturation: 95,
     blood_glucose: 90,
   });
 
-  // Anthropometry
+  // 4. Antropometría
   const [weight, setWeight] = useState<number | undefined>(75);
   const [height, setHeight] = useState<number | undefined>(172);
 
-  // Physical Exam
-  const [exam, setExam] = useState<PhysicalExamination>({
-    general_appearance: 'Paciente vigil, orientado en tiempo, espacio y persona. Buen estado general.',
-    head_and_neck: 'Cuello simétrico, sin ingurgitación yugular ni adenopatías palpables.',
-    respiratory_system: 'Buena mecánica ventilatoria, murmullo vesicular conservado bilateral sin ruidos sobreagregados.',
-    cardiovascular_system: 'Ruidos cardíacos rítmicos y normofonéticos. Silencios libres, sin soplos. Sin edemas periféricos.',
-    abdomen: 'Blando, depresible, indoloro a la palpación, ruidos hidroaéreos conservados.',
-    neurological_system: 'Sin déficit motor ni sensitivo aparente. Reflejos normales.',
-    extremities_and_skin: 'Pulsos periféricos palpables y simétricos. Piel elástica y normocoloreada.',
-  });
-
-  // Diagnoses
+  // 5. Diagnósticos
   const [cieCode, setCieCode] = useState('I10');
   const [cieDesc, setCieDesc] = useState('Hipertensión esencial (primaria)');
 
-  // SOAP Note
+  // 6. Estudios Complementarios / Laboratorio (Muestra PDF)
+  const [complementaryStudies, setComplementaryStudies] = useState('');
+
+  // 7. Plan Terapéutico (Muestra PDF)
   const [soap, setSoap] = useState<ClinicalEvolutionNote>({
     subjective: '',
     objective: '',
     assessment: '',
     treatment_plan: '',
     requested_studies: '',
-    alarm_signs: 'Consultar por guardia ante cefalea intensa, dolor torácico, disnea o pérdida de conocimiento.',
+    alarm_signs: 'Consultar por guardia ante cefalea intensa, dolor torácico o disnea.',
     next_control: 'Control en 30 días',
   });
 
@@ -116,22 +123,30 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
         setMedications(meds);
         setEvolutionHistory(history);
 
-        // If there is an encounter for today or in draft, load it
+        // If encounters exist, load the latest one
         if (prevEncs.length > 0) {
           const latest = prevEncs[0];
-          // If it was created recently or is draft, preview it
-          if (latest.status === 'DRAFT') {
-            setCurrentEncounter(latest);
-            setReason(latest.reason_for_consultation);
-            setIllness(latest.current_illness);
-            if (latest.vital_signs) setVitals(latest.vital_signs);
-            if (latest.anthropometry) {
-              setWeight(latest.anthropometry.weight_kg);
-              setHeight(latest.anthropometry.height_cm);
-            }
-            if (latest.physical_examination) setExam(latest.physical_examination);
-            if (latest.evolution_note) setSoap(latest.evolution_note);
+          setCurrentEncounter(latest);
+          setReason(latest.reason_for_consultation || '');
+          setIllness(latest.current_illness || '');
+          setDiseaseHistory(latest.disease_history || '');
+          setPathologicalHistory(latest.pathological_history || '');
+          setMedicationHistory(latest.medication_history || '');
+          setSurgicalHistory(latest.surgical_history || '');
+          setComplementaryStudies(latest.complementary_studies || '');
+
+          if (latest.vital_signs) setVitals(latest.vital_signs);
+          if (latest.anthropometry) {
+            setWeight(latest.anthropometry.weight_kg);
+            setHeight(latest.anthropometry.height_cm);
           }
+          if (latest.physical_examination) {
+            setExam({
+              ...exam,
+              ...latest.physical_examination
+            });
+          }
+          if (latest.evolution_note) setSoap(latest.evolution_note);
         }
       } catch (err) {
         console.error('Error loading patient context:', err);
@@ -154,36 +169,75 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
     );
   }
 
+  // Preload clinical sample matching the PDF
+  const handleApplySampleTemplate = () => {
+    setReason('Control evolutivo y evaluación clínica integral');
+    setIllness('Paciente en seguimiento clínico ambulatorio.');
+    setDiseaseHistory('Paciente con antecedentes de cardiopatía isquémica con colocación de 2 stent, Colon irritable, HTA, Colecistectomía, Osteoartrosis severa generalizada');
+    setPathologicalHistory('HTA, Cardiopatía isquémica con colocación de 2 stent');
+    setMedicationHistory('Valsartan 160 mg/d, Aspirina 100 mg/d, Hidroclorotiazida 12.5 mg/d (susp), zolpidem 12.5 mg/d, omeprazol 20 mg/d');
+    setSurgicalHistory('Colecistectomía');
+    setExam({
+      skin_and_mucosa: 'humedad conservada, elasticidad normal, no presenta edemas, ni circulación colateral',
+      cardiovascular_system: 'R1 R2 normofonéticos. Silencios impresionan libres. Pulsos periféricos permeables simétricos y regulares.',
+      respiratory_system: 'Reba sin ruidos patológicos agregados.',
+      abdomen: 'Abdomen blando, depresible, indoloro, flatos positivos, alimentación por vía oral, catarsis positiva diarreicas',
+      genitourinary_system: 'Puño percusión lumbar bilateral negativa. Puntos Ureterales (-). Diuresis +.',
+      neurological_system: 'Glasgow 15/15. Signos meníngeos ausentes. Reflejos Osteotendinosos conservados.',
+      general_appearance: 'Lúcido, orientado témporo-espacialmente. Normohidratado.',
+    });
+    setComplementaryStudies(`21/09/26: ferritina 219 gluc 0.88 hgb a 1c 5.70 feremia 22 transferrina 174 % sat transferrina 13 fosfor 2.53 na 129 k 4.5 cl 92 alb 3.80 prot tot 7.06\n24/08/26: hto 35 % hgb 11.42 gb 10230 plaq 235.200 vsg 26 tp 101 kptt 23 gluc 0.84 ur 0.51 cr 7.44 calcemia 8.84 na 131 k 4.8 cl 92 bd 0.12 bcta 0.18 bt 0.30 gpt 14 gor 22 fal 144 col tot 147 trig 130 dh 118 orina color amarillo aspecto ligeramente turbio sedimento escaso ph 5 densidad 1010 proteina no contiene glucosa no contiene cuerpos cetónicos no contiene bilirrubina no contiene urobilinogeno normal hemoglobina no contiene células epiteliales escasas leucocitos 1 a 3 x campo proetinograma electroforético prot tot 6.78 alb 3.53 alfa 1 glob 0.22 alfa 2 glob 0.76 beta glob 0.83 gamma gob 1.44`);
+    setSoap({
+      ...soap,
+      treatment_plan: 'Solicito alimentacion enteral Ensure 800 mg polvo x 3 latas\nKinesiologia motora 2 veces x semana',
+    });
+    alert('Plantilla médica modelo cargada exitosamente.');
+  };
+
   const handleSaveDraft = async () => {
     setSaving(true);
     try {
-      const payload = {
+      const payload: any = {
         patient: patient.id,
         reason_for_consultation: reason || 'Consulta de rutina clínica',
-        current_illness: illness,
+        current_illness: illness || '',
+        disease_history: diseaseHistory,
+        pathological_history: pathologicalHistory,
+        medication_history: medicationHistory,
+        surgical_history: surgicalHistory,
+        complementary_studies: complementaryStudies,
         vital_signs: vitals,
         anthropometry: {
-          weight_kg: weight,
-          height_cm: height,
+          weight_kg: weight || null,
+          height_cm: height || null,
         },
         physical_examination: exam,
-        evolution_note: soap,
+        evolution_note: {
+          ...soap,
+          treatment_plan: soap.treatment_plan || 'Plan de seguimiento clínico habitual.',
+        },
         diagnoses: [
           {
-            cie10_code: cieCode,
-            description: cieDesc,
+            cie10_code: cieCode || 'I10',
+            description: cieDesc || 'Evaluación clínica general',
             is_primary: true,
             is_presumptive: false,
           },
         ],
       };
 
-      const res = await api.createClinicalEncounter(payload);
+      let res: ClinicalEncounter;
+      if (currentEncounter && currentEncounter.status === 'DRAFT') {
+        res = await api.updateClinicalEncounter(currentEncounter.id, payload);
+      } else {
+        res = await api.createClinicalEncounter(payload);
+      }
       setCurrentEncounter(res);
-      alert('Borrador de consulta guardado exitosamente.');
-    } catch (err) {
-      alert('Error al guardar la consulta.');
-      console.error(err);
+      alert('¡Borrador de consulta guardado exitosamente!');
+    } catch (err: any) {
+      console.error('Error al guardar consulta:', err);
+      const detail = err.response?.data ? JSON.stringify(err.response.data, null, 2) : err.message;
+      alert(`Error al guardar la consulta:\n${detail}`);
     } finally {
       setSaving(false);
     }
@@ -195,7 +249,7 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
       return;
     }
     const confirm = window.confirm(
-      '¿Desea firmar digitalmente esta consulta médica?\n\nConforme a la Ley 27.706, una vez firmada adquirirá validez legal inmutable y se generará su hash criptográfico SHA-256. No podrá modificarse sin generar una enmienda auditada.'
+      '¿Desea firmar digitalmente esta historia clínica?\n\nConforme a la Ley 27.706, una vez firmada adquirirá validez legal inmutable y se generará su hash criptográfico SHA-256.'
     );
     if (!confirm) return;
 
@@ -206,8 +260,33 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
         await api.updateAppointmentStatus(appointmentId, 'COMPLETED');
       }
       alert('¡Consulta firmada exitosamente con Hash Criptográfico de Integridad!');
+    } catch (err: any) {
+      const detail = err.response?.data ? JSON.stringify(err.response.data, null, 2) : err.message;
+      alert(`Error al firmar la consulta:\n${detail}`);
+    }
+  };
+
+  const handleDownloadPdf = async () => {
+    if (!currentEncounter) {
+      alert('Guarde la consulta primero para generar su PDF.');
+      return;
+    }
+    try {
+      await api.downloadClinicalHistoryPdf(currentEncounter.id, patient.document_number);
     } catch (err) {
-      alert('Error al firmar la consulta.');
+      alert('Error al descargar el PDF.');
+    }
+  };
+
+  const handleOpenPdf = async () => {
+    if (!currentEncounter) {
+      alert('Guarde la consulta primero para previsualizar el PDF.');
+      return;
+    }
+    try {
+      await api.openClinicalHistoryPdf(currentEncounter.id);
+    } catch (err) {
+      alert('Error al abrir el PDF.');
     }
   };
 
@@ -251,16 +330,49 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
               <p className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
                 <span>DNI: <strong className="text-slate-700">{patient.document_number}</strong></span>
                 <span>·</span>
-                <span>Cobertura: <strong className="text-slate-700">{patient.health_insurance_name}</strong> {patient.health_insurance_number ? `(${patient.health_insurance_number})` : ''}</span>
+                <span>Fecha Nac: <strong className="text-slate-700">{patient.birth_date}</strong></span>
                 <span>·</span>
-                <span>Grupo: <strong className="text-rose-600">{patient.blood_type || '-'}</strong></span>
-                <span>·</span>
-                <span>Ciudad: <strong className="text-slate-700">{patient.city}</strong></span>
+                <span>Obra Social: <strong className="text-slate-700">{patient.health_insurance_name}</strong> {patient.health_insurance_number ? `(Afiliado: ${patient.health_insurance_number})` : ''}</span>
               </p>
             </div>
           </div>
 
           <div className="flex items-center space-x-2">
+            {!isSigned && (
+              <button
+                type="button"
+                onClick={handleApplySampleTemplate}
+                className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-purple-50 text-purple-700 hover:bg-purple-100 border border-purple-200 flex items-center space-x-1.5 transition-colors"
+                title="Carga los textos clínicos idénticos al PDF muestra para probar en 1 clic"
+              >
+                <Sparkles className="w-4 h-4 text-purple-600" />
+                <span>Cargar Plantilla Muestra</span>
+              </button>
+            )}
+
+            {currentEncounter && (
+              <>
+                <button
+                  type="button"
+                  onClick={handleOpenPdf}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-slate-100 hover:bg-slate-200 text-slate-700 flex items-center space-x-1.5 transition-colors"
+                  title="Abrir o Imprimir PDF"
+                >
+                  <Printer className="w-4 h-4" />
+                  <span>Imprimir PDF</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  className="px-3.5 py-2 rounded-xl text-xs font-semibold bg-sky-50 hover:bg-sky-100 text-sky-800 border border-sky-200 flex items-center space-x-1.5 transition-colors"
+                  title="Descargar archivo PDF oficial"
+                >
+                  <Download className="w-4 h-4 text-sky-600" />
+                  <span>Descargar PDF</span>
+                </button>
+              </>
+            )}
+
             <button
               onClick={() => setActiveSubTab('consultation')}
               className={`px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center space-x-1.5 transition-all ${
@@ -270,7 +382,7 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
               }`}
             >
               <Stethoscope className="w-4 h-4" />
-              <span>Consulta Actual</span>
+              <span>Historia Clínica</span>
             </button>
             <button
               onClick={() => setActiveSubTab('history')}
@@ -281,12 +393,12 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
               }`}
             >
               <TrendingUp className="w-4 h-4" />
-              <span>Evolución Histórica</span>
+              <span>Evolución</span>
             </button>
           </div>
         </div>
 
-        {/* Clinical alerts banner (allergies and chronic conditions) */}
+        {/* Clinical alerts banner */}
         {(allergies.length > 0 || conditions.length > 0) && (
           <div className="mt-4 pt-3 border-t border-slate-100 flex flex-wrap items-center gap-2">
             {allergies.map((all) => (
@@ -362,7 +474,7 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
           )}
         </div>
       ) : (
-        /* Clinical Consultation Form */
+        /* Clinical Consultation Form - Structuring EXACTLY as the PDF Sample */
         <div className="space-y-6">
           {/* Status Alert if Signed */}
           {isSigned && (
@@ -386,320 +498,313 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
             </div>
           )}
 
-          {/* Section 1: Anamnesis */}
+          {/* 1. ANTECEDENTES DE LA ENFERMEDAD & ANTECEDENTES */}
           <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
             <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2 border-b border-slate-100 pb-3">
               <FileText className="w-4 h-4 text-sky-600" />
-              <span>1. Anamnesis de Clínica Médica</span>
+              <span>Antecedentes de la Enfermedad y Personales</span>
             </h3>
 
             <div className="space-y-3">
               <div>
+                <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                  Antecedentes de la Enfermedad
+                </label>
+                <textarea
+                  rows={2}
+                  disabled={isSigned}
+                  value={diseaseHistory}
+                  onChange={(e) => setDiseaseHistory(e.target.value)}
+                  placeholder="Ej: Paciente femenino con antecedentes de cardiopatía isquémica con colocación de 2 stent, Colon irritable, HTA, Colecistectomía..."
+                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+                />
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    1. Patológicos
+                  </label>
+                  <textarea
+                    rows={2}
+                    disabled={isSigned}
+                    value={pathologicalHistory}
+                    onChange={(e) => setPathologicalHistory(e.target.value)}
+                    placeholder="HTA, Cardiopatía isquémica con colocación de 2 stent..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    2. Medicamentos
+                  </label>
+                  <textarea
+                    rows={2}
+                    disabled={isSigned}
+                    value={medicationHistory}
+                    onChange={(e) => setMedicationHistory(e.target.value)}
+                    placeholder="Valsartan 160 mg/d, Aspirina 100 mg/d, Hidroclorotiazida..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 mb-1">
+                    3. Quirúrgicos
+                  </label>
+                  <textarea
+                    rows={2}
+                    disabled={isSigned}
+                    value={surgicalHistory}
+                    onChange={(e) => setSurgicalHistory(e.target.value)}
+                    placeholder="Colecistectomía, apendicectomía..."
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+                  />
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. EXAMEN FÍSICO SEGMENTADO (Idéntico a la muestra PDF) */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
+                <Stethoscope className="w-4 h-4 text-sky-600" />
+                <span>Examen Físico (Estructura Clínica Oficial)</span>
+              </h3>
+              <span className="text-xs text-slate-400">Piel, CVC, Respiratorio, Abdomen, GU, SNC</span>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Motivo de Consulta y Síntomas Referidos
+                  - Piel y Mucosas
                 </label>
                 <input
                   type="text"
                   disabled={isSigned}
-                  value={reason}
-                  onChange={(e) => setReason(e.target.value)}
-                  placeholder="Ej: Control de hipertensión, astenia, chequeo general, disnea..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+                  value={exam.skin_and_mucosa || ''}
+                  onChange={(e) => setExam({ ...exam, skin_and_mucosa: e.target.value })}
+                  placeholder="humedad conservada, elasticidad normal, no presenta edemas..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
                 />
               </div>
 
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Enfermedad Actual y Cronología de Síntomas
+                  - Ap. CVC (Cardiovascular)
                 </label>
-                <textarea
-                  rows={3}
+                <input
+                  type="text"
                   disabled={isSigned}
-                  value={illness}
-                  onChange={(e) => setIllness(e.target.value)}
-                  placeholder="Detalle de inicio, evolución, intensidad, factores atenuantes o desencadenantes..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+                  value={exam.cardiovascular_system || ''}
+                  onChange={(e) => setExam({ ...exam, cardiovascular_system: e.target.value })}
+                  placeholder="R1 R2 normofonéticos. Silencios impresionan libres. Pulsos periféricos..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  - Ap. Respiratorio
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="text"
+                    disabled={isSigned}
+                    value={exam.respiratory_system || ''}
+                    onChange={(e) => setExam({ ...exam, respiratory_system: e.target.value })}
+                    placeholder="Reba sin ruidos patológicos agregados."
+                    className="flex-1 px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+                  />
+                  <div className="flex items-center space-x-1 shrink-0 bg-slate-50 px-2 py-1.5 border border-slate-200 rounded-xl text-xs">
+                    <span className="text-slate-400">Sat:</span>
+                    <input
+                      type="number"
+                      disabled={isSigned}
+                      value={vitals.oxygen_saturation || ''}
+                      onChange={(e) => setVitals({ ...vitals, oxygen_saturation: Number(e.target.value) })}
+                      className="w-12 bg-white px-1.5 py-0.5 border border-slate-200 rounded text-center font-bold text-sky-700"
+                    />
+                    <span className="text-slate-500">% aa</span>
+                  </div>
+                </div>
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  - Abdomen
+                </label>
+                <input
+                  type="text"
+                  disabled={isSigned}
+                  value={exam.abdomen || ''}
+                  onChange={(e) => setExam({ ...exam, abdomen: e.target.value })}
+                  placeholder="Abdomen blando, depresible, indoloro, flatos positivos, alimentación..."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  - Ap. Genitourinario
+                </label>
+                <input
+                  type="text"
+                  disabled={isSigned}
+                  value={exam.genitourinary_system || ''}
+                  onChange={(e) => setExam({ ...exam, genitourinary_system: e.target.value })}
+                  placeholder="Puño percusión lumbar bilateral negativa. Puntos Ureterales (-). Diuresis +."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-semibold text-slate-700 mb-1">
+                  - SNC (Sistema Nervioso Central)
+                </label>
+                <input
+                  type="text"
+                  disabled={isSigned}
+                  value={exam.neurological_system || ''}
+                  onChange={(e) => setExam({ ...exam, neurological_system: e.target.value })}
+                  placeholder="Glasgow 15/15. Signos meníngeos ausentes. Reflejos Osteotendinosos conservados."
+                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
                 />
               </div>
             </div>
-          </div>
 
-          {/* Section 2: Signos Vitales & Antropometría */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-5">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2">
-                <Heart className="w-4 h-4 text-rose-600" />
-                <span>2. Signos Vitales y Antropometría</span>
-              </h3>
-              {bmi && (
-                <div className="flex items-center space-x-2">
-                  <span className="text-xs text-slate-500">IMC Calculado:</span>
-                  <span className="text-xs font-bold px-2.5 py-1 rounded-full bg-sky-100 text-sky-900 border border-sky-200">
-                    {bmi} kg/m² ({bmiStatus})
-                  </span>
-                </div>
-              )}
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <label className="block text-[11px] font-semibold text-slate-500">PA Sistólica</label>
-                <div className="flex items-center space-x-1 mt-1">
+            {/* Quick Vital Signs & BMI Strip */}
+            <div className="mt-4 pt-3 border-t border-slate-100 grid grid-cols-2 sm:grid-cols-5 gap-3 bg-slate-50 p-3 rounded-xl">
+              <div>
+                <span className="text-[10px] text-slate-500 font-semibold block">Tensión Arterial</span>
+                <div className="flex items-center space-x-1 mt-0.5">
                   <input
                     type="number"
                     disabled={isSigned}
                     value={vitals.systolic_bp || ''}
                     onChange={(e) => setVitals({ ...vitals, systolic_bp: Number(e.target.value) })}
-                    className="w-16 px-2 py-1 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-800"
+                    className="w-12 px-1.5 py-0.5 bg-white border border-slate-300 rounded text-xs font-bold text-center"
                   />
-                  <span className="text-[10px] text-slate-400">mmHg</span>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <label className="block text-[11px] font-semibold text-slate-500">PA Diastólica</label>
-                <div className="flex items-center space-x-1 mt-1">
+                  <span>/</span>
                   <input
                     type="number"
                     disabled={isSigned}
                     value={vitals.diastolic_bp || ''}
                     onChange={(e) => setVitals({ ...vitals, diastolic_bp: Number(e.target.value) })}
-                    className="w-16 px-2 py-1 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-800"
+                    className="w-12 px-1.5 py-0.5 bg-white border border-slate-300 rounded text-xs font-bold text-center"
                   />
                   <span className="text-[10px] text-slate-400">mmHg</span>
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <label className="block text-[11px] font-semibold text-slate-500">Frec. Cardíaca</label>
-                <div className="flex items-center space-x-1 mt-1">
+              <div>
+                <span className="text-[10px] text-slate-500 font-semibold block">Frec. Cardíaca</span>
+                <div className="flex items-center space-x-1 mt-0.5">
                   <input
                     type="number"
                     disabled={isSigned}
                     value={vitals.heart_rate || ''}
                     onChange={(e) => setVitals({ ...vitals, heart_rate: Number(e.target.value) })}
-                    className="w-16 px-2 py-1 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-800"
+                    className="w-14 px-1.5 py-0.5 bg-white border border-slate-300 rounded text-xs font-bold text-center"
                   />
                   <span className="text-[10px] text-slate-400">lpm</span>
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <label className="block text-[11px] font-semibold text-slate-500">Sat. O2</label>
-                <div className="flex items-center space-x-1 mt-1">
-                  <input
-                    type="number"
-                    disabled={isSigned}
-                    value={vitals.oxygen_saturation || ''}
-                    onChange={(e) => setVitals({ ...vitals, oxygen_saturation: Number(e.target.value) })}
-                    className="w-16 px-2 py-1 bg-white border border-slate-300 rounded-lg text-sm font-bold text-emerald-700"
-                  />
-                  <span className="text-[10px] text-slate-400">%</span>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <label className="block text-[11px] font-semibold text-slate-500">Temperatura</label>
-                <div className="flex items-center space-x-1 mt-1">
-                  <input
-                    type="number"
-                    step="0.1"
-                    disabled={isSigned}
-                    value={vitals.temperature_c || ''}
-                    onChange={(e) => setVitals({ ...vitals, temperature_c: Number(e.target.value) })}
-                    className="w-16 px-2 py-1 bg-white border border-slate-300 rounded-lg text-sm font-bold text-slate-800"
-                  />
-                  <span className="text-[10px] text-slate-400">°C</span>
-                </div>
-              </div>
-
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <label className="block text-[11px] font-semibold text-slate-500">Peso Corporal</label>
-                <div className="flex items-center space-x-1 mt-1">
+              <div>
+                <span className="text-[10px] text-slate-500 font-semibold block">Peso</span>
+                <div className="flex items-center space-x-1 mt-0.5">
                   <input
                     type="number"
                     step="0.5"
                     disabled={isSigned}
                     value={weight || ''}
                     onChange={(e) => setWeight(Number(e.target.value))}
-                    className="w-16 px-2 py-1 bg-white border border-slate-300 rounded-lg text-sm font-bold text-sky-800"
+                    className="w-14 px-1.5 py-0.5 bg-white border border-slate-300 rounded text-xs font-bold text-center"
                   />
                   <span className="text-[10px] text-slate-400">kg</span>
                 </div>
               </div>
 
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <label className="block text-[11px] font-semibold text-slate-500">Talla / Altura</label>
-                <div className="flex items-center space-x-1 mt-1">
+              <div>
+                <span className="text-[10px] text-slate-500 font-semibold block">Talla</span>
+                <div className="flex items-center space-x-1 mt-0.5">
                   <input
                     type="number"
                     disabled={isSigned}
                     value={height || ''}
                     onChange={(e) => setHeight(Number(e.target.value))}
-                    className="w-16 px-2 py-1 bg-white border border-slate-300 rounded-lg text-sm font-bold text-sky-800"
+                    className="w-14 px-1.5 py-0.5 bg-white border border-slate-300 rounded text-xs font-bold text-center"
                   />
                   <span className="text-[10px] text-slate-400">cm</span>
                 </div>
               </div>
+
+              <div>
+                <span className="text-[10px] text-slate-500 font-semibold block">IMC</span>
+                <div className="mt-0.5">
+                  <span className="text-xs font-bold text-sky-700 bg-sky-100 px-2 py-0.5 rounded">
+                    {bmi ? `${bmi} kg/m²` : '-'}
+                  </span>
+                </div>
+              </div>
             </div>
           </div>
 
-          {/* Section 3: Examen Físico Segmentado */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          {/* 3. ESTUDIOS COMPLEMENTARIOS (Laboratorio cronológico) */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2 border-b border-slate-100 pb-3">
-              <Stethoscope className="w-4 h-4 text-sky-600" />
-              <span>3. Examen Físico Especializado</span>
+              <Activity className="w-4 h-4 text-purple-600" />
+              <span>Estudios Complementarios (Laboratorio e Imágenes)</span>
             </h3>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Aparato Cardiovascular</label>
-                <textarea
-                  rows={2}
-                  disabled={isSigned}
-                  value={exam.cardiovascular_system}
-                  onChange={(e) => setExam({ ...exam, cardiovascular_system: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Aparato Respiratorio</label>
-                <textarea
-                  rows={2}
-                  disabled={isSigned}
-                  value={exam.respiratory_system}
-                  onChange={(e) => setExam({ ...exam, respiratory_system: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Abdomen y Digestivo</label>
-                <textarea
-                  rows={2}
-                  disabled={isSigned}
-                  value={exam.abdomen}
-                  onChange={(e) => setExam({ ...exam, abdomen: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
-                />
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">Neurológico & Extremidades</label>
-                <textarea
-                  rows={2}
-                  disabled={isSigned}
-                  value={exam.neurological_system}
-                  onChange={(e) => setExam({ ...exam, neurological_system: e.target.value })}
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                Laboratorio por Fechas
+              </label>
+              <textarea
+                rows={4}
+                disabled={isSigned}
+                value={complementaryStudies}
+                onChange={(e) => setComplementaryStudies(e.target.value)}
+                placeholder="21/09/26: ferritina 219 gluc 0.88 hgb a 1c 5.70 feremia 22 transferrina 174 % sat transferrina 13 fosfor 2.53 na 129 k 4.5 cl 92 alb 3.80 prot tot 7.06&#10;24/08/26: hto 35 % hgb 11.42 gb 10230 plaq 235.200 vsg 26 tp 101 kptt 23 gluc 0.84 ur 0.51 cr 7.44 calcemia 8.84 na 131 k 4.8..."
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+              />
             </div>
           </div>
 
-          {/* Section 4: Diagnóstico y Plan Terapéutico (SOAP) */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-4">
+          {/* 4. PLAN TERAPÉUTICO (Muestra PDF) */}
+          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
             <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2 border-b border-slate-100 pb-3">
               <Pill className="w-4 h-4 text-emerald-600" />
-              <span>4. Diagnóstico Codificado y Plan Terapéutico (SOAP)</span>
+              <span>Plan Terapéutico y Conducta Médica</span>
             </h3>
 
-            {/* Diagnóstico CIE-10 */}
-            <div className="grid grid-cols-1 md:grid-cols-4 gap-3 bg-emerald-50/50 p-4 rounded-xl border border-emerald-100">
-              <div>
-                <label className="block text-xs font-semibold text-emerald-900 mb-1">Código CIE-10</label>
-                <input
-                  type="text"
-                  disabled={isSigned}
-                  value={cieCode}
-                  onChange={(e) => setCieCode(e.target.value)}
-                  placeholder="Ej: I10, E11.9..."
-                  className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-xl text-xs font-mono font-bold text-emerald-900"
-                />
-              </div>
-              <div className="md:col-span-3">
-                <label className="block text-xs font-semibold text-emerald-900 mb-1">Descripción Diagnóstica</label>
-                <input
-                  type="text"
-                  disabled={isSigned}
-                  value={cieDesc}
-                  onChange={(e) => setCieDesc(e.target.value)}
-                  placeholder="Ej: Hipertensión arterial esencial / Diabetes mellitus..."
-                  className="w-full px-3 py-2 bg-white border border-emerald-200 rounded-xl text-xs font-medium text-slate-800"
-                />
-              </div>
-            </div>
-
-            {/* Plan de Tratamiento y SOAP */}
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Plan de Tratamiento e Indicaciones Médicas (Farmacológicas e Higiénico-Dietéticas)
-                </label>
-                <textarea
-                  rows={3}
-                  disabled={isSigned}
-                  value={soap.treatment_plan}
-                  onChange={(e) => setSoap({ ...soap, treatment_plan: e.target.value })}
-                  placeholder="Medicación prescrita con dosis y duración, dieta hiposódica, pautas de ejercicio físico..."
-                  className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Estudios Solicitados
-                  </label>
-                  <input
-                    type="text"
-                    disabled={isSigned}
-                    value={soap.requested_studies}
-                    onChange={(e) => setSoap({ ...soap, requested_studies: e.target.value })}
-                    placeholder="Ej: Laboratorio perfil lipídico, ECG, Rx Tórax..."
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs font-semibold text-slate-700 mb-1">
-                    Próximo Control / Cita Evolutiva
-                  </label>
-                  <input
-                    type="text"
-                    disabled={isSigned}
-                    value={soap.next_control}
-                    onChange={(e) => setSoap({ ...soap, next_control: e.target.value })}
-                    placeholder="Ej: En 15 días con resultados de laboratorio..."
-                    className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-xs font-semibold text-slate-700 mb-1">
-                  Pautas de Alarma para el Paciente
-                </label>
-                <input
-                  type="text"
-                  disabled={isSigned}
-                  value={soap.alarm_signs}
-                  onChange={(e) => setSoap({ ...soap, alarm_signs: e.target.value })}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
-                />
-              </div>
+            <div>
+              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
+                Plan (Indicaciones, Nutrición, Kinesiología, Fármacos)
+              </label>
+              <textarea
+                rows={3}
+                disabled={isSigned}
+                value={soap.treatment_plan}
+                onChange={(e) => setSoap({ ...soap, treatment_plan: e.target.value })}
+                placeholder="Solicito alimentación enteral Ensure 800 mg polvo x 3 latas&#10;Kinesiología motora 2 veces x semana&#10;Continuar medicación habitual..."
+                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+              />
             </div>
           </div>
 
           {/* Action Toolbar */}
-          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex items-center justify-between">
+          <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-sm flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="text-xs text-slate-500 flex items-center space-x-2">
               <ShieldCheck className="w-4 h-4 text-sky-600" />
-              <span>Garantía de inmutabilidad y trazabilidad legal de historia clínica</span>
+              <span>Conforme a la Ley 27.706 de Historia Clínica Electrónica</span>
             </div>
 
-            <div className="flex items-center space-x-3">
+            <div className="flex items-center space-x-2.5 self-end sm:self-auto">
               {!isSigned && (
                 <>
                   <button
@@ -718,16 +823,20 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
                     className="px-5 py-2 bg-emerald-600 hover:bg-emerald-700 active:bg-emerald-800 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 shadow-md shadow-emerald-600/20 transition-all"
                   >
                     <ShieldCheck className="w-4 h-4" />
-                    <span>Firmar Consulta Médica (Ley 27.706)</span>
+                    <span>Firmar Historia Clínica</span>
                   </button>
                 </>
               )}
 
-              {isSigned && (
-                <div className="flex items-center space-x-2 text-xs font-bold text-emerald-700">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                  <span>Actuación clínica completada y registrada.</span>
-                </div>
+              {currentEncounter && (
+                <button
+                  type="button"
+                  onClick={handleDownloadPdf}
+                  className="px-4 py-2 bg-sky-600 hover:bg-sky-700 text-white font-bold rounded-xl text-xs flex items-center space-x-1.5 shadow-sm transition-all"
+                >
+                  <Download className="w-4 h-4" />
+                  <span>Descargar PDF</span>
+                </button>
               )}
             </div>
           </div>

@@ -3,11 +3,13 @@ from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.db import transaction
+from django.http import HttpResponse
 
 from .models import (
     ClinicalEncounter, PatientCondition, PatientAllergy,
     PatientMedication, ClinicalNoteVersion, VitalSigns, Anthropometry
 )
+from .pdf_generator import generate_clinical_history_pdf
 from .serializers import (
     ClinicalEncounterSerializer, PatientConditionSerializer,
     PatientAllergySerializer, PatientMedicationSerializer
@@ -154,3 +156,22 @@ class PatientMedicationListCreateView(generics.ListCreateAPIView):
         if patient_id:
             return self.queryset.filter(patient_id=patient_id)
         return self.queryset
+
+
+class DownloadClinicalHistoryPdfView(views.APIView):
+    """
+    Genera y descarga la Historia Clínica en formato PDF idéntico a la muestra oficial.
+    """
+    permission_classes = [IsAuthenticated, IsDoctor]
+
+    def get(self, request, pk):
+        encounter = get_object_or_404(
+            ClinicalEncounter.objects.select_related('patient', 'doctor', 'doctor__professional_profile', 'physical_examination', 'vital_signs', 'evolution_note'),
+            pk=pk
+        )
+        pdf_bytes = generate_clinical_history_pdf(encounter)
+        
+        response = HttpResponse(pdf_bytes, content_type='application/pdf')
+        filename = f"Historia_Clinica_{encounter.patient.document_number}_{encounter.encounter_date.strftime('%Y%m%d')}.pdf"
+        response['Content-Disposition'] = f'inline; filename="{filename}"'
+        return response

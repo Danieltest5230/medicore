@@ -5,6 +5,7 @@ from .models import (
     PatientCondition, PatientAllergy, PatientMedication, ClinicalDiagnosis,
     ClinicalEvolutionNote, ClinicalNoteVersion
 )
+from apps.accounts.models import User
 from apps.accounts.serializers import UserSerializer
 from apps.patients.serializers import PatientSerializer
 
@@ -34,9 +35,9 @@ class PhysicalExaminationSerializer(serializers.ModelSerializer):
     class Meta:
         model = PhysicalExamination
         fields = [
-            'id', 'general_appearance', 'head_and_neck',
+            'id', 'general_appearance', 'skin_and_mucosa', 'head_and_neck',
             'respiratory_system', 'cardiovascular_system',
-            'abdomen', 'neurological_system', 'extremities_and_skin'
+            'abdomen', 'genitourinary_system', 'neurological_system', 'extremities_and_skin'
         ]
         read_only_fields = ['id']
 
@@ -49,6 +50,8 @@ class ClinicalDiagnosisSerializer(serializers.ModelSerializer):
 
 
 class ClinicalEvolutionNoteSerializer(serializers.ModelSerializer):
+    treatment_plan = serializers.CharField(required=False, allow_blank=True, default='')
+
     class Meta:
         model = ClinicalEvolutionNote
         fields = [
@@ -68,6 +71,7 @@ class ClinicalNoteVersionSerializer(serializers.ModelSerializer):
 
 
 class ClinicalEncounterSerializer(serializers.ModelSerializer):
+    doctor = serializers.PrimaryKeyRelatedField(queryset=User.objects.all(), required=False)
     vital_signs = VitalSignsSerializer(required=False)
     anthropometry = AnthropometrySerializer(required=False)
     physical_examination = PhysicalExaminationSerializer(required=False)
@@ -82,6 +86,8 @@ class ClinicalEncounterSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'patient', 'doctor', 'doctor_details', 'patient_details',
             'encounter_date', 'reason_for_consultation', 'current_illness',
+            'disease_history', 'pathological_history', 'medication_history',
+            'surgical_history', 'complementary_studies',
             'status', 'signed_at', 'signature_hash', 'vital_signs',
             'anthropometry', 'physical_examination', 'evolution_note',
             'diagnoses', 'versions', 'created_at', 'updated_at'
@@ -98,8 +104,12 @@ class ClinicalEncounterSerializer(serializers.ModelSerializer):
 
         # Assign logged-in doctor if not specified
         request = self.context.get('request')
-        if request and request.user and not validated_data.get('doctor'):
-            validated_data['doctor'] = request.user
+        if not validated_data.get('doctor'):
+            if request and request.user and request.user.is_authenticated:
+                validated_data['doctor'] = request.user
+            else:
+                fallback_doctor = User.objects.filter(role=User.Role.DOCTOR).first() or User.objects.first()
+                validated_data['doctor'] = fallback_doctor
 
         encounter = ClinicalEncounter.objects.create(**validated_data)
 

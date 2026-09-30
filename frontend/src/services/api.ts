@@ -104,9 +104,35 @@ export const api = {
     const res = await apiClient.post<ClinicalEncounter>('/clinical/encounters/', data);
     return res.data;
   },
+  updateClinicalEncounter: async (id: string, data: any) => {
+    const res = await apiClient.put<ClinicalEncounter>(`/clinical/encounters/${id}/`, data);
+    return res.data;
+  },
   signClinicalEncounter: async (id: string) => {
     const res = await apiClient.post<ClinicalEncounter>(`/clinical/encounters/${id}/sign/`);
     return res.data;
+  },
+  downloadClinicalHistoryPdf: async (id: string, patientDoc: string) => {
+    const res = await apiClient.get(`/clinical/encounters/${id}/pdf/`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Historia_Clinica_${patientDoc}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    window.URL.revokeObjectURL(url);
+  },
+  openClinicalHistoryPdf: async (id: string) => {
+    const res = await apiClient.get(`/clinical/encounters/${id}/pdf/`, {
+      responseType: 'blob',
+    });
+    const blob = new Blob([res.data], { type: 'application/pdf' });
+    const url = window.URL.createObjectURL(blob);
+    window.open(url, '_blank');
   },
   amendClinicalEncounter: async (id: string, amendment_reason: string) => {
     const res = await apiClient.post<ClinicalEncounter>(`/clinical/encounters/${id}/amend/`, { amendment_reason });

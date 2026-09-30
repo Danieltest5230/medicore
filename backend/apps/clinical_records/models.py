@@ -18,9 +18,14 @@ class ClinicalEncounter(models.Model):
     doctor = models.ForeignKey(User, on_delete=models.PROTECT, related_name='medical_encounters')
     encounter_date = models.DateTimeField('Fecha y Hora de Atención', default=timezone.now)
 
-    # Anamnesis de Clínica Médica
+    # Anamnesis y Antecedentes de Clínica Médica (según modelo documental)
     reason_for_consultation = models.TextField('Motivo de Consulta', help_text='Síntomas principales o motivo de la visita')
     current_illness = models.TextField('Enfermedad Actual', blank=True, help_text='Detalle de la evolución de los síntomas y cronología')
+    disease_history = models.TextField('Antecedentes de la Enfermedad', blank=True, help_text='Resumen de antecedentes clínicos de la enfermedad')
+    pathological_history = models.TextField('1. Patológicos', blank=True, help_text='Ej: HTA, Cardiopatía isquémica con colocación de 2 stent')
+    medication_history = models.TextField('2. Medicamentos', blank=True, help_text='Ej: Valsartan 160 mg/d, Aspirina 100 mg/d, etc.')
+    surgical_history = models.TextField('3. Quirúrgicos', blank=True, help_text='Ej: Colecistectomía')
+    complementary_studies = models.TextField('Estudios Complementarios / Laboratorio', blank=True, help_text='Resultados bioquímicos y de laboratorio organizados por fecha')
 
     status = models.CharField('Estado de la Consulta', max_length=20, choices=Status.choices, default=Status.DRAFT)
     signed_at = models.DateTimeField('Fecha y Hora de Firma', null=True, blank=True)
@@ -116,12 +121,14 @@ class PhysicalExamination(models.Model):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     encounter = models.OneToOneField(ClinicalEncounter, on_delete=models.CASCADE, related_name='physical_examination')
     general_appearance = models.TextField('Estado General', blank=True, help_text='Lúcido, orientado, regular/buen estado general')
+    skin_and_mucosa = models.TextField('Piel y Mucosas', blank=True, help_text='Humedad conservada, elasticidad normal, no presenta edemas, ni circulación colateral')
     head_and_neck = models.TextField('Cabeza y Cuello', blank=True, help_text='Adenopatías, tiroides, pulsos carotídeos, ingurgitación yugular')
-    respiratory_system = models.TextField('Aparato Respiratorio', blank=True, help_text='Murmullo vesicular, ruidos agregados')
-    cardiovascular_system = models.TextField('Aparato Cardiovascular', blank=True, help_text='R1-R2 normofonéticos, soplos, edemas')
-    abdomen = models.TextField('Abdomen', blank=True, help_text='Blando, depresible, no doloroso, visceromegalias')
-    neurological_system = models.TextField('Sistema Nervioso', blank=True, help_text='Orientación, fuerza motora, sensibilidad, reflejos')
-    extremities_and_skin = models.TextField('Miembros y Piel', blank=True, help_text='Perfusión, várices, lesiones cutáneas')
+    respiratory_system = models.TextField('Ap. Respiratorio', blank=True, help_text='Buena ventilación, sin ruidos agregados, Sat O2')
+    cardiovascular_system = models.TextField('Ap. CVC (Cardiovascular)', blank=True, help_text='R1 R2 normofonéticos. Silencios libres. Pulsos periféricos permeables simétricos y regulares')
+    abdomen = models.TextField('Abdomen', blank=True, help_text='Blando, depresible, indoloro, ruidos hidroaéreos, catarsis, alimentación')
+    genitourinary_system = models.TextField('Ap. Genitourinario', blank=True, help_text='Puño percusión lumbar bilateral negativa. Puntos Ureterales (-). Diuresis +')
+    neurological_system = models.TextField('SNC (Sistema Nervioso Central)', blank=True, help_text='Glasgow 15/15. Signos meníngeos ausentes. Reflejos Osteotendinosos conservados')
+    extremities_and_skin = models.TextField('Miembros y Piel (Otros)', blank=True, help_text='Perfusión, várices, lesiones cutáneas')
 
     class Meta:
         verbose_name = 'Examen Físico'
@@ -196,7 +203,7 @@ class ClinicalEvolutionNote(models.Model):
     subjective = models.TextField('Subjetivo (S)', blank=True, help_text='Relato del paciente y evolución percibida')
     objective = models.TextField('Objetivo (O)', blank=True, help_text='Hallazgos relevantes observados y medidos')
     assessment = models.TextField('Apreciación / Juicio Clínico (A)', blank=True, help_text='Interpretación del estado actual')
-    treatment_plan = models.TextField('Plan de Tratamiento (P)', help_text='Indicaciones farmacológicas, higiénico-dietéticas')
+    treatment_plan = models.TextField('Plan de Tratamiento (P)', blank=True, help_text='Indicaciones farmacológicas, higiénico-dietéticas')
 
     requested_studies = models.TextField('Estudios Complementarios Solicitados', blank=True, help_text='Laboratorio, RX, ECG, etc.')
     alarm_signs = models.TextField('Pautas de Alarma', blank=True, help_text='Síntomas por los cuales consultar por guardia')
