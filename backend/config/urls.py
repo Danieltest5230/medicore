@@ -65,16 +65,20 @@ def api_health_check(request):
         'compliance': ['Ley 27.706', 'Ley 26.529', 'Ley 25.326']
     })
 
-urlpatterns = [
-    path('', root_landing_view, name='root_landing'),
-    path('admin/', admin.site.urls),
-    path('api/health/', api_health_check, name='api_health'),
-    path('api/', include('api.urls')),
-]
+def spa_view(request, path=""):
+    dist_index = settings.BASE_DIR.parent / 'frontend' / 'dist' / 'index.html'
+    if dist_index.exists():
+        with open(dist_index, 'r', encoding='utf-8') as f:
+            return HttpResponse(f.read(), content_type='text/html')
+    return root_landing_view(request)
 
 from django.urls import re_path
 from django.views.static import serve
 
-urlpatterns += [
+urlpatterns = [
+    path('admin/', admin.site.urls),
+    path('api/health/', api_health_check, name='api_health'),
+    path('api/', include('api.urls')),
     re_path(r'^media/(?P<path>.*)$', serve, {'document_root': settings.MEDIA_ROOT}),
+    re_path(r'^(?P<path>.*)$', spa_view, name='spa_view'),
 ]
