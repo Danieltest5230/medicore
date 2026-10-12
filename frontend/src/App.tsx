@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Header } from './components/Header';
 import { Sidebar, NavTab } from './components/Sidebar';
+import { MobileNavBar } from './components/MobileNavBar';
+import { UserProfileModal } from './components/UserProfileModal';
 import { LoginView } from './modules/auth/LoginView';
 import { AgendaView } from './modules/agenda/AgendaView';
 import { PatientListView } from './modules/patients/PatientListView';
@@ -9,8 +11,9 @@ import { PrescriptionsView } from './modules/documents/PrescriptionsView';
 import { AuditView } from './modules/audit/AuditView';
 import { User, Patient } from './types';
 import { api } from './services/api';
+import { ThemeProvider } from './theme/ThemeContext';
 
-export function App() {
+export function AppContent() {
   const [currentUser, setCurrentUser] = useState<User | null>(() => {
     const saved = localStorage.getItem('medicore_user');
     return saved ? JSON.parse(saved) : null;
@@ -19,6 +22,7 @@ export function App() {
   const [activeTab, setActiveTab] = useState<NavTab>('agenda');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [activeAppointmentId, setActiveAppointmentId] = useState<string | undefined>(undefined);
+  const [isProfileModalOpen, setIsProfileModalOpen] = useState(false);
 
   useEffect(() => {
     const handleAuthChange = () => {
@@ -44,18 +48,33 @@ export function App() {
     setSelectedPatient(patient);
   };
 
+  const handleUserUpdated = (updatedUser: User) => {
+    setCurrentUser(updatedUser);
+  };
+
   if (!currentUser) {
     return <LoginView onLoginSuccess={() => setActiveTab('agenda')} />;
   }
 
   return (
-    <div className="min-h-screen flex flex-col bg-slate-100">
-      <Header currentUser={currentUser} onLogout={handleLogout} />
+    <div className="min-h-screen flex flex-col bg-[#f4f8fb] dark:bg-[#070b13] text-slate-800 dark:text-slate-100 transition-colors">
+      <Header
+        currentUser={currentUser}
+        onLogout={handleLogout}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
+      />
 
       <div className="flex-1 flex overflow-hidden">
-        <Sidebar activeTab={activeTab} onTabChange={setActiveTab} userRole={currentUser.role} />
+        {/* Desktop / Tablet Sidebar */}
+        <Sidebar
+          activeTab={activeTab}
+          onTabChange={setActiveTab}
+          userRole={currentUser.role}
+          onOpenProfile={() => setIsProfileModalOpen(true)}
+        />
 
-        <main className="flex-1 overflow-y-auto p-6 lg:p-8">
+        {/* Main Content View with mobile bottom padding */}
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 pb-24 md:pb-8 transition-colors">
           <div className="max-w-7xl mx-auto">
             {activeTab === 'agenda' && (
               <AgendaView
@@ -89,7 +108,42 @@ export function App() {
           </div>
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation Bar */}
+      <MobileNavBar
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        currentUser={currentUser}
+        onOpenProfile={() => setIsProfileModalOpen(true)}
+      />
+
+      {/* User Profile, Photo & Theme Modal */}
+      {isProfileModalOpen && (
+        <UserProfileModal
+          user={currentUser}
+          isOpen={isProfileModalOpen}
+          onClose={() => setIsProfileModalOpen(false)}
+          onUserUpdated={handleUserUpdated}
+        />
+      )}
     </div>
+  );
+}
+
+export function App() {
+  const currentUser = (() => {
+    try {
+      const saved = localStorage.getItem('medicore_user');
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  })();
+
+  return (
+    <ThemeProvider userThemePreference={currentUser?.theme_preference}>
+      <AppContent />
+    </ThemeProvider>
   );
 }
 

@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import {
   Activity, ShieldCheck, Heart, AlertTriangle, FileCheck, Lock,
   Plus, History, TrendingUp, Save, CheckCircle2, ChevronRight,
-  Stethoscope, Clock, ShieldAlert, Pill, FileText, Download, Printer, Sparkles
+  Stethoscope, Clock, ShieldAlert, Pill, FileText, Download, Printer, Sparkles,
+  Edit3, X, MapPin
 } from 'lucide-react';
 import {
   Patient, ClinicalEncounter, VitalSigns, Anthropometry,
@@ -10,6 +11,7 @@ import {
   PatientCondition, PatientAllergy, PatientMedication
 } from '../../types';
 import { api } from '../../services/api';
+import { PRELOADED_MEDICATIONS, PRELOADED_STUDIES } from '../../data/medicalCatalog';
 
 interface ClinicalConsultationViewProps {
   patient: Patient | null;
@@ -22,6 +24,25 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
   appointmentId,
   onFinish,
 }) => {
+  const [currentPatientData, setCurrentPatientData] = useState<Patient | null>(patient);
+  const [showEditPatientModal, setShowEditPatientModal] = useState(false);
+  const [editPatientForm, setEditPatientForm] = useState({
+    first_name: '',
+    last_name: '',
+    document_number: '',
+    birth_date: '',
+    gender: 'F',
+    blood_type: '0+',
+    phone: '',
+    email: '',
+    address: '',
+    city: 'Posadas',
+    health_insurance_name: '',
+    health_insurance_number: '',
+    emergency_contact_name: '',
+    emergency_contact_phone: '',
+  });
+
   const [activeSubTab, setActiveSubTab] = useState<'consultation' | 'history'>('consultation');
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -104,6 +125,43 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
   };
 
   const { bmi, status: bmiStatus } = calculateBmi(weight, height);
+
+  // Sync effective patient state
+  useEffect(() => {
+    setCurrentPatientData(patient);
+    if (patient) {
+      setEditPatientForm({
+        first_name: patient.first_name || '',
+        last_name: patient.last_name || '',
+        document_number: patient.document_number || '',
+        birth_date: patient.birth_date || '',
+        gender: patient.gender || 'F',
+        blood_type: patient.blood_type || '0+',
+        phone: patient.phone || '',
+        email: patient.email || '',
+        address: patient.address || '',
+        city: patient.city || 'Posadas',
+        health_insurance_name: patient.health_insurance_name || '',
+        health_insurance_number: patient.health_insurance_number || '',
+        emergency_contact_name: patient.emergency_contact_name || '',
+        emergency_contact_phone: patient.emergency_contact_phone || '',
+      });
+    }
+  }, [patient]);
+
+  const handleSavePatientData = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const targetPatient = currentPatientData || patient;
+    if (!targetPatient) return;
+    try {
+      const updated = await api.updatePatient(targetPatient.id, editPatientForm as any);
+      setCurrentPatientData(updated);
+      setShowEditPatientModal(false);
+      alert('¡Ficha del paciente actualizada con éxito!');
+    } catch {
+      alert('Error al actualizar datos del paciente.');
+    }
+  };
 
   // Load patient context data
   useEffect(() => {
@@ -305,34 +363,53 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
 
   const isSigned = currentEncounter?.status === 'SIGNED';
 
+  const effectivePatient = currentPatientData || patient;
+
   return (
     <div className="space-y-6">
       {/* Patient Header Card */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-sm">
+      <div className="bg-white dark:bg-slate-900 p-5 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm transition-colors">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start space-x-4">
-            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-sky-600 to-cyan-500 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-sky-100">
-              {patient.first_name[0]}{patient.last_name[0]}
+            <div className="w-14 h-14 rounded-2xl bg-gradient-to-tr from-cyan-600 to-sky-500 text-white flex items-center justify-center font-bold text-xl shadow-md shadow-cyan-500/20 shrink-0">
+              {effectivePatient.first_name[0]}{effectivePatient.last_name[0]}
             </div>
             <div>
-              <div className="flex items-center space-x-3">
-                <h2 className="text-xl font-bold text-slate-900">{patient.full_name}</h2>
-                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-sky-100 text-sky-800 border border-sky-200">
-                  {patient.gender === 'F' ? 'Femenino' : 'Masculino'} · {patient.age} años
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-xl font-bold text-slate-900 dark:text-white">
+                  {effectivePatient.full_name}
+                </h2>
+                <button
+                  type="button"
+                  onClick={() => setShowEditPatientModal(true)}
+                  className="px-2.5 py-1 rounded-full border border-slate-300 dark:border-slate-700 hover:border-cyan-500 hover:bg-cyan-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-semibold flex items-center space-x-1 transition-colors shadow-2xs"
+                  title="Editar datos filiatorios, obra social o contacto del paciente"
+                >
+                  <Edit3 className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                  <span>Editar Ficha</span>
+                </button>
+                <span className="text-xs px-2.5 py-0.5 rounded-full font-semibold bg-cyan-50 dark:bg-cyan-950 text-cyan-800 dark:text-cyan-300 border border-cyan-200 dark:border-cyan-800">
+                  {effectivePatient.gender === 'F' ? 'Femenino' : 'Masculino'} · {effectivePatient.age} años
                 </span>
                 {isSigned && (
-                  <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-100 text-emerald-800 border border-emerald-300 flex items-center space-x-1">
+                  <span className="text-xs px-2.5 py-0.5 rounded-full font-bold bg-emerald-50 dark:bg-emerald-950 text-emerald-800 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 flex items-center space-x-1">
                     <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
                     <span>Firmada (Ley 27.706)</span>
                   </span>
                 )}
               </div>
-              <p className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
-                <span>DNI: <strong className="text-slate-700">{patient.document_number}</strong></span>
+              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1">
+                <span>DNI: <strong className="text-slate-700 dark:text-slate-200">{effectivePatient.document_number}</strong></span>
                 <span>·</span>
-                <span>Fecha Nac: <strong className="text-slate-700">{patient.birth_date}</strong></span>
+                <span>Fecha Nac: <strong className="text-slate-700 dark:text-slate-200">{effectivePatient.birth_date}</strong></span>
                 <span>·</span>
-                <span>Obra Social: <strong className="text-slate-700">{patient.health_insurance_name}</strong> {patient.health_insurance_number ? `(Afiliado: ${patient.health_insurance_number})` : ''}</span>
+                <span>Obra Social: <strong className="text-slate-700 dark:text-slate-200">{effectivePatient.health_insurance_name}</strong> {effectivePatient.health_insurance_number ? `(Afiliado: ${effectivePatient.health_insurance_number})` : ''}</span>
+                {effectivePatient.phone && (
+                  <>
+                    <span>·</span>
+                    <span>Tel: <strong className="text-slate-700 dark:text-slate-200">{effectivePatient.phone}</strong></span>
+                  </>
+                )}
               </p>
             </div>
           </div>
@@ -754,37 +831,96 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
           </div>
 
           {/* 3. ESTUDIOS COMPLEMENTARIOS (Laboratorio cronológico) */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2 border-b border-slate-100 pb-3">
-              <Activity className="w-4 h-4 text-purple-600" />
-              <span>Estudios Complementarios (Laboratorio e Imágenes)</span>
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-3.5 transition-colors">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <Activity className="w-4 h-4 text-purple-600 dark:text-purple-400" />
+              <span>Estudios Complementarios (Laboratorio, Imágenes & Cardiología)</span>
             </h3>
 
+            {/* Quick preloaded study tags */}
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+              <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                <Sparkles className="w-3.5 h-3.5 text-cyan-600 dark:text-cyan-400" />
+                <span>Estudios Clínicos Frecuentes (Haga clic para agregar al informe o redacte libremente):</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                {PRELOADED_STUDIES.slice(0, 10).map((st) => (
+                  <button
+                    key={st.id}
+                    type="button"
+                    disabled={isSigned}
+                    onClick={() => {
+                      const todayStr = new Date().toLocaleDateString('es-AR', {
+                        day: '2-digit',
+                        month: '2-digit',
+                        year: '2-digit',
+                      });
+                      const text = `\n${todayStr}: ${st.title} -> ${st.description}`;
+                      setComplementaryStudies((prev) => (prev ? prev + text : text.trim()));
+                    }}
+                    className="px-2.5 py-1 rounded-full bg-white dark:bg-slate-800 hover:bg-cyan-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[11px] font-semibold text-slate-800 dark:text-slate-200 flex items-center space-x-1 transition-colors disabled:opacity-50 shadow-2xs"
+                  >
+                    <Plus className="w-3 h-3 text-cyan-600 dark:text-cyan-400" />
+                    <span>{st.title}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
-              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
-                Laboratorio por Fechas
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-1">
+                Detalle Cronológico de Laboratorios y Estudios
               </label>
               <textarea
                 rows={4}
                 disabled={isSigned}
                 value={complementaryStudies}
                 onChange={(e) => setComplementaryStudies(e.target.value)}
-                placeholder="21/09/26: ferritina 219 gluc 0.88 hgb a 1c 5.70 feremia 22 transferrina 174 % sat transferrina 13 fosfor 2.53 na 129 k 4.5 cl 92 alb 3.80 prot tot 7.06&#10;24/08/26: hto 35 % hgb 11.42 gb 10230 plaq 235.200 vsg 26 tp 101 kptt 23 gluc 0.84 ur 0.51 cr 7.44 calcemia 8.84 na 131 k 4.8..."
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+                placeholder="21/09/26: ferritina 219 gluc 0.88 hgb a 1c 5.70 feremia 22 transferrina 174 % sat transferrina 13 fosfor 2.53 na 129 k 4.5 cl 92 alb 3.80 prot tot 7.06&#10;24/08/26: hto 35 % hgb 11.42 gb 10230 plaq 235.200 vsg 26 tp 101 kptt 23 gluc 0.84 ur 0.51 cr 7.44..."
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-mono text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none disabled:opacity-75"
               />
             </div>
           </div>
 
           {/* 4. PLAN TERAPÉUTICO (Muestra PDF) */}
-          <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-sm space-y-3">
-            <h3 className="text-base font-bold text-slate-900 flex items-center space-x-2 border-b border-slate-100 pb-3">
-              <Pill className="w-4 h-4 text-emerald-600" />
+          <div className="bg-white dark:bg-slate-900 p-6 rounded-3xl border border-slate-200/90 dark:border-slate-800 shadow-sm space-y-3.5 transition-colors">
+            <h3 className="text-base font-bold text-slate-900 dark:text-white flex items-center space-x-2 border-b border-slate-100 dark:border-slate-800 pb-3">
+              <Pill className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
               <span>Plan Terapéutico y Conducta Médica</span>
             </h3>
 
+            {/* Quick preloaded medication tags */}
+            <div className="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-200 dark:border-slate-700 space-y-2">
+              <div className="flex items-center space-x-1.5 text-xs font-bold text-slate-800 dark:text-slate-200">
+                <Sparkles className="w-3.5 h-3.5 text-emerald-600 dark:text-emerald-400" />
+                <span>Fármacos e Indicaciones Clínicas Frecuentes (Haga clic para agregar al plan):</span>
+              </div>
+              <div className="flex flex-wrap gap-1.5 max-h-32 overflow-y-auto">
+                {PRELOADED_MEDICATIONS.slice(0, 12).map((med) => (
+                  <button
+                    key={med.id}
+                    type="button"
+                    disabled={isSigned}
+                    onClick={() => {
+                      const line = `\n• ${med.name} ${med.defaultConcentration} (${med.defaultForm}): ${med.defaultDosage}`;
+                      setSoap((prev) => ({
+                        ...prev,
+                        treatment_plan: prev.treatment_plan ? prev.treatment_plan + line : line.trim(),
+                      }));
+                    }}
+                    className="px-2.5 py-1 rounded-full bg-white dark:bg-slate-800 hover:bg-emerald-50 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-600 text-[11px] font-semibold text-slate-800 dark:text-slate-200 flex items-center space-x-1 transition-colors disabled:opacity-50 shadow-2xs"
+                  >
+                    <Plus className="w-3 h-3 text-emerald-600 dark:text-emerald-400" />
+                    <span>{med.name}</span>
+                    <span className="text-[10px] text-slate-400 font-normal">({med.defaultConcentration})</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             <div>
-              <label className="block text-xs font-bold text-slate-800 uppercase tracking-wider mb-1">
-                Plan (Indicaciones, Nutrición, Kinesiología, Fármacos)
+              <label className="block text-xs font-bold text-slate-800 dark:text-slate-200 uppercase tracking-wider mb-1">
+                Plan (Indicaciones, Nutrición, Kinesiología, Fármacos - Editable libremente)
               </label>
               <textarea
                 rows={3}
@@ -792,7 +928,7 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
                 value={soap.treatment_plan}
                 onChange={(e) => setSoap({ ...soap, treatment_plan: e.target.value })}
                 placeholder="Solicito alimentación enteral Ensure 800 mg polvo x 3 latas&#10;Kinesiología motora 2 veces x semana&#10;Continuar medicación habitual..."
-                className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-sky-500 focus:bg-white disabled:opacity-75"
+                className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white placeholder:text-slate-400 focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none disabled:opacity-75"
               />
             </div>
           </div>
@@ -885,6 +1021,265 @@ export const ClinicalConsultationView: React.FC<ClinicalConsultationViewProps> =
                 Confirmar y Registrar Enmienda
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Patient Modal in Consultation */}
+      {showEditPatientModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-3 sm:p-4 overflow-y-auto">
+          <div className="bg-white dark:bg-slate-900 rounded-3xl max-w-2xl w-full p-5 sm:p-7 shadow-2xl border border-slate-200 dark:border-slate-800 space-y-4 my-8 max-h-[90vh] overflow-y-auto">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100 dark:border-slate-800">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-cyan-50 dark:bg-cyan-950 flex items-center justify-center text-cyan-600 dark:text-cyan-400">
+                  <Edit3 className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base sm:text-lg font-bold text-slate-900 dark:text-white">
+                    Editar Ficha del Paciente
+                  </h3>
+                  <p className="text-xs text-slate-500 dark:text-slate-400">
+                    Actualice los datos filiatorios, cobertura de salud o contacto
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowEditPatientModal(false)}
+                className="p-2 rounded-full hover:bg-slate-100 dark:hover:bg-slate-800 text-slate-400 hover:text-slate-600 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <form onSubmit={handleSavePatientData} className="space-y-4">
+              {/* Nombres y Apellidos */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Nombres *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editPatientForm.first_name}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, first_name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Apellidos *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editPatientForm.last_name}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, last_name: e.target.value })}
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* DNI, Fecha Nacimiento, Sexo */}
+              <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    DNI / Documento *
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    value={editPatientForm.document_number}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, document_number: e.target.value })}
+                    placeholder="Número sin puntos"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Fecha Nacimiento *
+                  </label>
+                  <input
+                    type="date"
+                    required
+                    value={editPatientForm.birth_date}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, birth_date: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Sexo / Género
+                  </label>
+                  <select
+                    value={editPatientForm.gender}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, gender: e.target.value as any })}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  >
+                    <option value="F">Femenino</option>
+                    <option value="M">Masculino</option>
+                    <option value="X">Otro / X</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Obra Social y Carnet */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Obra Social / Prepaga
+                  </label>
+                  <input
+                    type="text"
+                    value={editPatientForm.health_insurance_name}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, health_insurance_name: e.target.value })}
+                    placeholder="IPS, OSDE, Swiss Medical, Particular..."
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    N° Carnet / Afiliado
+                  </label>
+                  <input
+                    type="text"
+                    value={editPatientForm.health_insurance_number}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, health_insurance_number: e.target.value })}
+                    placeholder="Ej. 2328955-01"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm font-mono text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Contacto: Teléfono y Correo */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Teléfono / Celular
+                  </label>
+                  <input
+                    type="tel"
+                    value={editPatientForm.phone}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, phone: e.target.value })}
+                    placeholder="+54 9 376 4..."
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Correo Electrónico
+                  </label>
+                  <input
+                    type="email"
+                    value={editPatientForm.email}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, email: e.target.value })}
+                    placeholder="paciente@correo.com"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Grupo / Factor
+                  </label>
+                  <select
+                    value={editPatientForm.blood_type}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, blood_type: e.target.value })}
+                    className="w-full px-3 py-2 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none font-bold"
+                  >
+                    <option value="0+">0 Rh Positivo (0+)</option>
+                    <option value="0-">0 Rh Negativo (0-)</option>
+                    <option value="A+">A Rh Positivo (A+)</option>
+                    <option value="A-">A Rh Negativo (A-)</option>
+                    <option value="B+">B Rh Positivo (B+)</option>
+                    <option value="B-">B Rh Negativo (B-)</option>
+                    <option value="AB+">AB Rh Positivo (AB+)</option>
+                    <option value="AB-">AB Rh Negativo (AB-)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Domicilio y Ciudad */}
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div className="sm:col-span-2">
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Domicilio
+                  </label>
+                  <input
+                    type="text"
+                    value={editPatientForm.address}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, address: e.target.value })}
+                    placeholder="Calle, Número, Piso, Dpto"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Ciudad / Localidad
+                  </label>
+                  <input
+                    type="text"
+                    value={editPatientForm.city}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, city: e.target.value })}
+                    placeholder="Posadas, Oberá..."
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Contacto de Emergencia */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Familiar o Contacto de Emergencia
+                  </label>
+                  <input
+                    type="text"
+                    value={editPatientForm.emergency_contact_name}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, emergency_contact_name: e.target.value })}
+                    placeholder="Nombre completo y parentesco"
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  />
+                </div>
+
+                <div>
+                  <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 uppercase tracking-wider mb-1">
+                    Teléfono de Emergencia
+                  </label>
+                  <input
+                    type="tel"
+                    value={editPatientForm.emergency_contact_phone}
+                    onChange={(e) => setEditPatientForm({ ...editPatientForm, emergency_contact_phone: e.target.value })}
+                    placeholder="+54 9 376 4..."
+                    className="w-full px-3.5 py-2.5 bg-slate-50 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 rounded-xl text-xs sm:text-sm text-slate-900 dark:text-white focus:ring-2 focus:ring-cyan-500 focus:bg-white dark:focus:bg-slate-900 outline-none"
+                  />
+                </div>
+              </div>
+
+              {/* Botones de acción */}
+              <div className="flex items-center justify-end space-x-3 pt-4 border-t border-slate-100 dark:border-slate-800">
+                <button
+                  type="button"
+                  onClick={() => setShowEditPatientModal(false)}
+                  className="px-5 py-2.5 rounded-full border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="submit"
+                  className="px-6 py-2.5 bg-gradient-to-r from-cyan-600 to-sky-600 hover:from-cyan-700 hover:to-sky-700 text-white rounded-full text-xs font-bold shadow-md shadow-cyan-600/20 transition-all flex items-center space-x-1.5"
+                >
+                  <Save className="w-4 h-4" />
+                  <span>Guardar Cambios</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

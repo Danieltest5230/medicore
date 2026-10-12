@@ -1,3 +1,5 @@
+export type ThemeId = 'integrando-cyan' | 'emerald-mint' | 'royal-navy' | 'dark-surgical' | 'amethyst-health';
+
 export interface User {
   id: string;
   email: string;
@@ -6,7 +8,11 @@ export interface User {
   full_name: string;
   role: 'DOCTOR' | 'RECEPTIONIST' | 'ADMIN' | 'PATIENT';
   phone_number?: string;
+  avatar?: string;
+  avatar_url?: string;
+  theme_preference?: ThemeId | string;
   professional_profile?: {
+    id?: string;
     national_license: string;
     provincial_license: string;
     specialty: string;

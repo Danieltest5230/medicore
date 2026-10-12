@@ -34,14 +34,15 @@ start http://localhost:5173
 
 echo.
 echo ==========================================================
-echo   MEDICORE esta corriendo!
+echo   MEDICORE esta corriendo exitosamente!
 echo.
-echo   URL: http://localhost:5173
+echo   Acceso Local (PC):    http://localhost:5173
+echo   Acceso App Celular:   http://192.168.1.100:5173
 echo.
-echo   Credenciales Demo:
-echo   - Medico:      medico@medicore.ar / AdminPassword123!
-echo   - Recepcion:   recepcion@medicore.ar / AdminPassword123!
-echo   - Admin:       admin@medicore.ar / AdminPassword123!
+echo   Credenciales de Demostracion:
+echo   - Dr. Daniel Cairel:    medico@medicore.ar      / AdminPassword123!
+echo   - Dra. Maria Lilia P.:  dra.piccoli@medicore.ar  / AdminPassword123!
+echo   - Recepcion:            recepcion@medicore.ar   / AdminPassword123!
 echo ==========================================================
 echo.
 echo No cierre las ventanas negras de Backend y Frontend mientras use el sistema.

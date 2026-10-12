@@ -37,12 +37,27 @@ class User(AbstractBaseUser, PermissionsMixin):
         ADMIN = 'ADMIN', 'Administrador'
         PATIENT = 'PATIENT', 'Paciente'
 
+    class ThemePreference(models.TextChoices):
+        INTEGRANDO_CYAN = 'integrando-cyan', 'Integrando Salud (Cian & Azul Marino)'
+        EMERALD_MINT = 'emerald-mint', 'Esmeralda Clínico (Verde Quirúrgico)'
+        ROYAL_NAVY = 'royal-navy', 'Zafiro Hospitalario (Azul Real & Índigo)'
+        DARK_SURGICAL = 'dark-surgical', 'Modo Quirófano Noche (Oscuro de Alto Contraste)'
+        AMETHYST_HEALTH = 'amethyst-health', 'Amatista Salud (Violeta Moderno)'
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     email = models.EmailField('Correo electrónico', unique=True, db_index=True)
     first_name = models.CharField('Nombre', max_length=150)
     last_name = models.CharField('Apellido', max_length=150)
     role = models.CharField('Rol en el sistema', max_length=20, choices=Role.choices, default=Role.PATIENT)
     phone_number = models.CharField('Teléfono', max_length=30, blank=True, null=True)
+    avatar = models.ImageField('Foto de perfil', upload_to='avatars/', blank=True, null=True)
+    avatar_url = models.TextField('URL o Base64 de fotografía', blank=True, default='')
+    theme_preference = models.CharField(
+        'Tema visual preferido',
+        max_length=50,
+        choices=ThemePreference.choices,
+        default=ThemePreference.INTEGRANDO_CYAN
+    )
 
     is_active = models.BooleanField('Activo', default=True)
     is_staff = models.BooleanField('Acceso a panel administrativo', default=False)

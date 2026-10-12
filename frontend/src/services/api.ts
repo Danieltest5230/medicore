@@ -5,17 +5,35 @@ import {
   Prescription, StudyOrder, AuditEvent
 } from '../types';
 
-const API_BASE = '/api';
+export const getApiBaseUrl = (): string => {
+  const custom = localStorage.getItem('medicore_api_base_url');
+  if (custom) return custom.replace(/\/+$/, '');
+  const envUrl = import.meta.env.VITE_API_BASE_URL;
+  if (envUrl) return envUrl.replace(/\/+$/, '');
+  return '/api';
+};
+
+export const setApiBaseUrl = (url: string) => {
+  const clean = url.trim().replace(/\/+$/, '');
+  if (!clean || clean === '/api') {
+    localStorage.removeItem('medicore_api_base_url');
+  } else {
+    localStorage.setItem('medicore_api_base_url', clean);
+  }
+  apiClient.defaults.baseURL = getApiBaseUrl();
+  window.dispatchEvent(new CustomEvent('medicore-server-changed', { detail: getApiBaseUrl() }));
+};
 
 export const apiClient = axios.create({
-  baseURL: API_BASE,
+  baseURL: getApiBaseUrl(),
   headers: {
     'Content-Type': 'application/json',
   },
 });
 
-// Interceptor to add JWT token
+// Interceptor to add JWT token and dynamic baseURL
 apiClient.interceptors.request.use((config) => {
+  config.baseURL = getApiBaseUrl();
   const token = localStorage.getItem('medicore_token');
   if (token && config.headers) {
     config.headers.Authorization = `Bearer ${token}`;
@@ -54,6 +72,33 @@ export const api = {
     const res = await apiClient.get<User>('/auth/me/');
     return res.data;
   },
+  updateProfile: async (data: Partial<User> | FormData) => {
+    const isFormData = typeof FormData !== 'undefined' && data instanceof FormData;
+    const res = await apiClient.patch<User>('/auth/me/', data, {
+      headers: isFormData ? { 'Content-Type': 'multipart/form-data' } : undefined,
+    });
+    const current = localStorage.getItem('medicore_user');
+    const parsed = current ? JSON.parse(current) : {};
+    const updated = { ...parsed, ...res.data };
+    localStorage.setItem('medicore_user', JSON.stringify(updated));
+    window.dispatchEvent(new Event('medicore-auth-change'));
+    return res.data;
+  },
+  updateThemePreference: async (theme: string) => {
+    localStorage.setItem('medicore_theme', theme);
+    window.dispatchEvent(new CustomEvent('medicore-theme-change', { detail: theme }));
+    try {
+      const res = await apiClient.patch<User>('/auth/me/', { theme_preference: theme });
+      const current = localStorage.getItem('medicore_user');
+      if (current) {
+        const parsed = JSON.parse(current);
+        localStorage.setItem('medicore_user', JSON.stringify({ ...parsed, theme_preference: theme }));
+      }
+      return res.data;
+    } catch {
+      return null;
+    }
+  },
 
   // Patients
   getPatients: async (search?: string) => {
@@ -68,6 +113,10 @@ export const api = {
   },
   createPatient: async (data: Partial<Patient>) => {
     const res = await apiClient.post<Patient>('/patients/', data);
+    return res.data;
+  },
+  updatePatient: async (id: string, data: Partial<Patient>) => {
+    const res = await apiClient.patch<Patient>(`/patients/${id}/`, data);
     return res.data;
   },
 
@@ -188,4 +237,8 @@ export const api = {
     const res = await apiClient.get<{ results: AuditEvent[] } | AuditEvent[]>('/audit/events/');
     return Array.isArray(res.data) ? res.data : res.data.results;
   },
+
+  // Server configuration
+  getApiBaseUrl,
+  setApiBaseUrl,
 };

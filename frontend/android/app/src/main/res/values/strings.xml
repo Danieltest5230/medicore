@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">MEDICORE</string>
+    <string name="title_activity_main">MEDICORE</string>
+    <string name="package_name">ar.medicore.app</string>
+    <string name="custom_url_scheme">ar.medicore.app</string>
+</resources>

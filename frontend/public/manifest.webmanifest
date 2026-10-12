@@ -1,0 +1,24 @@
+{
+  "name": "MEDICORE - Plataforma Clínica",
+  "short_name": "MEDICORE",
+  "description": "Sistema Clínico de Medicina Interna y Gestión de Consultorio - HCE Ley 27.706",
+  "start_url": "/",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#071e3d",
+  "theme_color": "#0096c7",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
